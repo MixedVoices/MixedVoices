@@ -1,12 +1,14 @@
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
 from uuid import uuid4
 
 import mixedvoices
 import mixedvoices.constants as constants
 from mixedvoices.core.recording import Recording
 from mixedvoices.core.step import Step
+from mixedvoices.evaluation.eval_agent import EvalAgent
+from mixedvoices.evaluation.eval_case_generation import generate_eval_prompts
 from mixedvoices.utils import process_recording
 
 
@@ -27,6 +29,7 @@ class Version:
         self.load_recordings()
         self.load_steps()
         self.create_flowchart()
+        self.analytics = []
 
     @property
     def path(self):
@@ -81,7 +84,7 @@ class Version:
         self,
         audio_path: str,
         is_successful: Optional[bool] = None,
-        blocking: bool = False,
+        blocking: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
         user_channel: str = "left",
     ):
@@ -147,3 +150,40 @@ class Version:
         success_criteria = d.get("success_criteria", None)
         metadata = d.get("metadata", None)
         return cls(version_id, project_id, prompt, success_criteria, metadata)
+
+    def get_paths(self):
+        # TODO implement
+        return []
+
+    def get_failure_reasons(self):
+        # TODO implement
+        return []
+
+    def create_evaluator(
+        self,
+        empathy: bool = True,
+        verbatim_repetition: bool = True,
+        conciseness: bool = True,
+        hallucination: bool = True,
+        context_awareness: bool = True,
+        scheduling: bool = True,
+        adaptive_qa: bool = True,
+        objection_handling: bool = True,
+    ) -> Iterator[EvalAgent]:
+        metrics_dict = {
+            "empathy": empathy,
+            "verbatim_repetition": verbatim_repetition,
+            "conciseness": conciseness,
+            "hallucination": hallucination,
+            "context_awareness": context_awareness,
+            "scheduling": scheduling,
+            "adaptive_qa": adaptive_qa,
+            "objection_handling": objection_handling,
+        }
+        all_paths = self.get_paths()
+        all_failure_reasons = self.get_failure_reasons()
+        print("Generating Evaluation Prompts")
+        prompts = generate_eval_prompts(self.prompt, all_failure_reasons, all_paths)
+        print(prompts)
+        for prompt in prompts:
+            yield EvalAgent(self, prompt, metrics_dict)
